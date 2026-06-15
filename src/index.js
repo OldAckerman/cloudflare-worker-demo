@@ -115,7 +115,7 @@ async function handleWeather(request) {
       const osmUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)}&format=json&limit=1`;
       const osmResponse = await fetch(osmUrl, {
         headers: {
-          'User-Agent': 'Cloudflare-Worker-Weather-Demo/1.0 (contact: admin@example.com)'
+          'User-Agent': 'Cloudflare-Worker-Weather-Demo/1.0 (contact: oldackerman.dev@outlook.com)'
         }
       });
       const osmData = await osmResponse.json();
