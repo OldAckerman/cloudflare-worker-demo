@@ -106,13 +106,14 @@ function handleJoke(request) {
 async function handleWeather(request) {
   const url = new URL(request.url);
   const city = url.searchParams.get("city");
+  const lang = url.searchParams.get("lang") || "en";
   
   let lat, lon, resolvedCityName;
   
   if (city) {
     // 1. Try Nominatim (OSM Geocoding) first to support Chinese city names
     try {
-      const osmUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)}&format=json&limit=1`;
+      const osmUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)}&format=json&limit=1&accept-language=${lang}`;
       const osmResponse = await fetch(osmUrl, {
         headers: {
           'User-Agent': 'Cloudflare-Worker-Weather-Demo/1.0 (contact: oldackerman.dev@outlook.com)'
@@ -200,7 +201,6 @@ async function handleWeather(request) {
   }
 }
 
-
 async function handleEcho(request) {
   try {
     const contentType = request.headers.get("content-type") || "";
@@ -278,6 +278,52 @@ function getHTML(request) {
       max-width: 1100px;
       width: 100%;
       z-index: 10;
+      position: relative;
+    }
+
+    /* Language Switcher Button Styling */
+    .lang-switch-container {
+      position: absolute;
+      top: 0;
+      right: 0;
+      display: flex;
+      gap: 4px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 3px;
+      backdrop-filter: blur(8px);
+      z-index: 100;
+    }
+
+    @media (max-width: 600px) {
+      .lang-switch-container {
+        position: relative;
+        justify-content: center;
+        margin-bottom: 1.5rem;
+        float: none;
+        display: inline-flex;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+    }
+
+    .lang-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 0.35rem 0.85rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border-radius: 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .lang-btn.active {
+      background: var(--accent-primary);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(246, 130, 31, 0.3);
     }
 
     header {
@@ -439,6 +485,7 @@ function getHTML(request) {
       border-radius: 18px;
       text-align: center;
       transition: all 0.5s ease;
+      min-height: 220px;
     }
 
     .weather-temp {
@@ -729,6 +776,12 @@ function getHTML(request) {
 <body>
 
   <div class="container">
+    <!-- Language Switcher -->
+    <div class="lang-switch-container">
+      <button class="lang-btn active" id="langBtnEn" onclick="switchLanguage('en')">EN</button>
+      <button class="lang-btn" id="langBtnZh" onclick="switchLanguage('zh')">中文</button>
+    </div>
+
     <header>
       <div class="logo-container">
         <svg class="logo-icon" viewBox="0 0 114 114">
@@ -736,15 +789,15 @@ function getHTML(request) {
           <path d="M96.7,35 C90.5,23.3 78,16 64.5,16 C50,16 36.8,24.3 31.2,37.3 C21,38.8 13.2,47.2 12.3,57.5 C17.3,55.9 22.6,55.8 27.7,57.1 L60.7,65.8 C64.6,66.8 67.5,70 68,74 L72.2,108 C80.3,105 87.2,99.2 91.5,91.7 C100.8,91.7 109,85.6 111.4,76.5 C113.8,67.4 109.8,57.8 101.6,53.2 C101.9,50 101.7,46.7 100.9,43.6 C99.8,40.4 98.4,37.6 96.7,35 Z" fill="#FAAD3F"/>
           <path d="M64.4,79 L57.8,24 C57.8,24 49.3,31 38,39.8 L48.8,74.9 C52.9,78.2 58.7,80 64.4,79 Z" fill="#F38020"/>
         </svg>
-        <h1>Edge Engine Dashboard</h1>
+        <h1 data-i18n="title">Edge Engine Dashboard</h1>
       </div>
-      <p class="tagline">An interactive, feature-rich sandbox served directly from Cloudflare Edge</p>
+      <p class="tagline" data-i18n="tagline">An interactive, feature-rich sandbox served directly from Cloudflare Edge</p>
     </header>
 
     <div class="location-banner">
-      <span>🌐 Edge Region: <strong>${country}</strong></span>
-      <span>🏢 POP Datacenter: <strong>${city}</strong></span>
-      <span>⚡ Core Framework: <strong>V8 Isolate</strong></span>
+      <span>🌐 <span data-i18n="region">Edge Region</span>: <strong>${country}</strong></span>
+      <span>🏢 <span data-i18n="pop">POP Datacenter</span>: <strong>${city}</strong></span>
+      <span>⚡ <span data-i18n="framework">Core Framework</span>: <strong>V8 Isolate</strong></span>
     </div>
 
     <div class="dashboard-grid">
@@ -759,58 +812,58 @@ function getHTML(request) {
           
           <div class="weather-details">
             <div class="weather-detail-item">
-              Wind Speed
+              <span data-i18n="windSpeed">Wind Speed</span>
               <strong id="weatherWind">-- km/h</strong>
             </div>
             <div class="weather-detail-item">
-              Latitude/Longitude
+              <span data-i18n="coords">Latitude/Longitude</span>
               <strong id="weatherCoords">--, --</strong>
             </div>
           </div>
         </div>
         
         <div class="weather-search-box">
-          <h2>Edge Aggregated Weather</h2>
-          <p>
+          <h2 data-i18n="weatherTitle">Edge Aggregated Weather</h2>
+          <p data-i18n="weatherDesc">
             This feature demonstrates **Edge API Aggregation**. When requested, the Cloudflare Worker intercepts the request, maps your incoming IP coordinates or queries the Open-Meteo Geocoding database, triggers a background fetch to retrieve weather forecasts, and synthesizes a structured API response in milliseconds.
           </p>
           <div class="input-group">
             <input type="text" id="weatherCityInput" class="text-input" placeholder="Enter city name (e.g. Tokyo, London)..." onkeydown="if(event.key==='Enter') searchWeather()">
-            <button class="btn" onclick="searchWeather()">Search Weather</button>
+            <button class="btn" onclick="searchWeather()" data-i18n="searchBtn">Search Weather</button>
           </div>
         </div>
       </div>
 
       <!-- API CONTROLLER PANEL -->
       <div class="card">
-        <h2>Service Controller</h2>
+        <h2 data-i18n="controllerTitle">Service Controller</h2>
         <div class="btn-group">
           <button class="api-btn" onclick="triggerAPI('/api/info')">
-            <span>Query Geolocation & Request Details</span>
+            <span data-i18n="btnInfo">Query Geolocation & Request Details</span>
             <span class="method">GET</span>
           </button>
           
           <button class="api-btn" onclick="triggerAPI('/api/time')">
-            <span>Query High-Precision Server Time</span>
+            <span data-i18n="btnTime">Query High-Precision Server Time</span>
             <span class="method">GET</span>
           </button>
           
           <button class="api-btn" onclick="triggerAPI('/api/joke')">
-            <span>Retrieve Random Developer Joke</span>
+            <span data-i18n="btnJoke">Retrieve Random Developer Joke</span>
             <span class="method">GET</span>
           </button>
           
           <button class="api-btn" onclick="triggerAPI('/api/weather')">
-            <span>View Raw Weather JSON (Local Node)</span>
+            <span data-i18n="btnRawWeather">View Raw Weather JSON (Local Node)</span>
             <span class="method">GET</span>
           </button>
         </div>
 
         <div class="echo-section">
-          <label for="echoInput">Perform POST request to /api/echo</label>
+          <label for="echoInput" data-i18n="echoLabel">Perform POST request to /api/echo</label>
           <div class="input-group">
             <input type="text" id="echoInput" class="text-input" placeholder="Type text payload..." value="Ping! Hello Cloudflare Worker Edge!">
-            <button class="btn btn-secondary" onclick="postPayload()">POST Data</button>
+            <button class="btn btn-secondary" onclick="postPayload()" data-i18n="echoBtn">POST Data</button>
           </div>
         </div>
       </div>
@@ -840,29 +893,134 @@ function getHTML(request) {
   </div>
 
   <script>
-    // WMO Weather interpretation codes
+    // i18n Dictionary
+    const i18n = {
+      en: {
+        title: "Edge Engine Dashboard",
+        tagline: "An interactive, feature-rich sandbox served directly from Cloudflare Edge",
+        region: "Edge Region",
+        pop: "POP Datacenter",
+        framework: "Core Framework",
+        weatherTitle: "Edge Aggregated Weather",
+        weatherDesc: "This feature demonstrates **Edge API Aggregation**. When requested, the Cloudflare Worker intercepts the request, maps your incoming IP coordinates or queries the Open-Meteo Geocoding database, triggers a background fetch to retrieve weather forecasts, and synthesizes a structured API response in milliseconds.",
+        searchPlaceholder: "Enter city name (e.g. Tokyo, London)...",
+        searchBtn: "Search Weather",
+        controllerTitle: "Service Controller",
+        btnInfo: "Query Geolocation & Request Details",
+        btnTime: "Query High-Precision Server Time",
+        btnJoke: "Retrieve Random Developer Joke",
+        btnRawWeather: "View Raw Weather JSON (Local Node)",
+        echoLabel: "Perform POST request to /api/echo",
+        echoPlaceholder: "Type text payload...",
+        echoBtn: "POST Data",
+        terminalTitleDefault: "system_ready.sh",
+        terminalDefaultText: "// Ready for API triggers.\\n// Trigger any operation to print incoming JSON payloads dynamically.",
+        fetching: "FETCHING...",
+        posting: "POSTING...",
+        error: "ERROR",
+        windSpeed: "Wind Speed",
+        coords: "Latitude/Longitude",
+        detecting: "Detecting Location...",
+        retrieving: "Retrieving current conditions"
+      },
+      zh: {
+        title: "边缘引擎仪表盘",
+        tagline: "直接从 Cloudflare 边缘节点提供服务的交互式多功能沙盒",
+        region: "边缘区域",
+        pop: "数据中心",
+        framework: "核心架构",
+        weatherTitle: "边缘聚合天气",
+        weatherDesc: "此功能展示了**边缘 API 聚合**的能力。在接收到请求时，Cloudflare Worker 会拦截请求，读取客户端 IP 地理坐标或查询地名解析数据库，然后通过后台异步 fetch 抓取天气数据，最后在毫秒内拼装出结构化 API 响应并返回给您。",
+        searchPlaceholder: "输入城市名称（如：北京、东京、伦敦）...",
+        searchBtn: "搜索天气",
+        controllerTitle: "服务控制面板",
+        btnInfo: "查询地理位置与请求详情",
+        btnTime: "查询高精度服务器时间",
+        btnJoke: "获取随机程序员笑话",
+        btnRawWeather: "查看本地节点天气原始 JSON",
+        echoLabel: "发送 POST 请求到 /api/echo",
+        echoPlaceholder: "输入文本负载...",
+        echoBtn: "发送数据",
+        terminalTitleDefault: "system_ready.sh",
+        terminalDefaultText: "// 等待 API 触发。\\n// 触发任意操作以实时输出返回的 JSON 负载。",
+        fetching: "请求中...",
+        posting: "发送中...",
+        error: "错误",
+        windSpeed: "当前风速",
+        coords: "经度 / 纬度",
+        detecting: "正在定位位置...",
+        retrieving: "正在检索当前天气状况"
+      }
+    };
+
+    let currentLang = localStorage.getItem('lang') || 'en';
+    let weatherDataCache = null;
+
+    // Switch Language Function
+    function switchLanguage(lang) {
+      currentLang = lang;
+      localStorage.setItem('lang', lang);
+      
+      // Update UI active buttons
+      document.getElementById('langBtnEn').classList.toggle('active', lang === 'en');
+      document.getElementById('langBtnZh').classList.toggle('active', lang === 'zh');
+      
+      // Update data-i18n items
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (i18n[lang] && i18n[lang][key]) {
+          el.innerHTML = i18n[lang][key];
+        }
+      });
+
+      // Update placeholders
+      document.getElementById('weatherCityInput').placeholder = i18n[lang].searchPlaceholder;
+      document.getElementById('echoInput').placeholder = i18n[lang].echoPlaceholder;
+
+      // Re-display weather with new language if cache exists
+      if (weatherDataCache) {
+        // Fetch again to request translation from Nominatim, keeping it fast and dynamic
+        const activeInput = document.getElementById('weatherCityInput').value.trim();
+        if (activeInput) {
+          searchWeather(true);
+        } else {
+          loadLocalWeather(true);
+        }
+      } else {
+        document.getElementById('weatherCity').textContent = i18n[lang].detecting;
+        document.getElementById('weatherCondition').textContent = i18n[lang].retrieving;
+      }
+
+      // Update terminal default text if it's currently idle
+      const terminalOutput = document.getElementById('terminalOutput');
+      if (terminalOutput.innerHTML.startsWith('//') || terminalOutput.innerHTML.includes('触发') || terminalOutput.innerHTML.includes('Triggers')) {
+        terminalOutput.innerHTML = i18n[lang].terminalDefaultText;
+      }
+    }
+
+    // WMO Weather interpretation codes with translations
     const weatherCodes = {
-      0: { desc: 'Clear sky', icon: '☀️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(251, 191, 36, 0.06) 100%)' },
-      1: { desc: 'Mainly clear', icon: '🌤️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(251, 191, 36, 0.04) 100%)' },
-      2: { desc: 'Partly cloudy', icon: '⛅', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(147, 197, 253, 0.03) 100%)' },
-      3: { desc: 'Overcast', icon: '☁️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(107, 114, 128, 0.05) 100%)' },
-      45: { desc: 'Foggy', icon: '🌫️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(156, 163, 175, 0.05) 100%)' },
-      48: { desc: 'Depositing rime fog', icon: '🌫️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(156, 163, 175, 0.05) 100%)' },
-      51: { desc: 'Light drizzle', icon: '🌧️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(59, 130, 246, 0.06) 100%)' },
-      53: { desc: 'Moderate drizzle', icon: '🌧️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(59, 130, 246, 0.08) 100%)' },
-      55: { desc: 'Dense drizzle', icon: '🌧️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(59, 130, 246, 0.1) 100%)' },
-      61: { desc: 'Slight rain', icon: '🌧️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(59, 130, 246, 0.08) 100%)' },
-      63: { desc: 'Moderate rain', icon: '🌧️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(59, 130, 246, 0.12) 100%)' },
-      65: { desc: 'Heavy rain', icon: '🌧️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(29, 78, 216, 0.15) 100%)' },
-      71: { desc: 'Slight snow fall', icon: '❄️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(147, 197, 253, 0.08) 100%)' },
-      73: { desc: 'Moderate snow fall', icon: '❄️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(147, 197, 253, 0.12) 100%)' },
-      75: { desc: 'Heavy snow fall', icon: '❄️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(147, 197, 253, 0.18) 100%)' },
-      80: { desc: 'Slight rain showers', icon: '🌦️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(59, 130, 246, 0.08) 100%)' },
-      81: { desc: 'Moderate rain showers', icon: '🌦️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(59, 130, 246, 0.12) 100%)' },
-      82: { desc: 'Violent rain showers', icon: '⛈️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(29, 78, 216, 0.18) 100%)' },
-      95: { desc: 'Thunderstorm', icon: '⛈️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(124, 58, 237, 0.15) 100%)' },
-      96: { desc: 'Thunderstorm with hail', icon: '⛈️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(124, 58, 237, 0.18) 100%)' },
-      99: { desc: 'Thunderstorm with heavy hail', icon: '⛈️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(124, 58, 237, 0.22) 100%)' }
+      0: { desc: { en: 'Clear sky', zh: '晴天' }, icon: '☀️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(251, 191, 36, 0.06) 100%)' },
+      1: { desc: { en: 'Mainly clear', zh: '晴间多云' }, icon: '🌤️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(251, 191, 36, 0.04) 100%)' },
+      2: { desc: { en: 'Partly cloudy', zh: '多云' }, icon: '⛅', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(147, 197, 253, 0.03) 100%)' },
+      3: { desc: { en: 'Overcast', zh: '阴天' }, icon: '☁️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(107, 114, 128, 0.05) 100%)' },
+      45: { desc: { en: 'Foggy', zh: '有大雾' }, icon: '🌫️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(156, 163, 175, 0.05) 100%)' },
+      48: { desc: { en: 'Depositing rime fog', zh: '有雾凇' }, icon: '🌫️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(156, 163, 175, 0.05) 100%)' },
+      51: { desc: { en: 'Light drizzle', zh: '毛毛细雨' }, icon: '🌧️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(59, 130, 246, 0.06) 100%)' },
+      53: { desc: { en: 'Moderate drizzle', zh: '中度细雨' }, icon: '🌧️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(59, 130, 246, 0.08) 100%)' },
+      55: { desc: { en: 'Dense drizzle', zh: '重度细雨' }, icon: '🌧️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(59, 130, 246, 0.1) 100%)' },
+      61: { desc: { en: 'Slight rain', zh: '小雨' }, icon: '🌧️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(59, 130, 246, 0.08) 100%)' },
+      63: { desc: { en: 'Moderate rain', zh: '中雨' }, icon: '🌧️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(59, 130, 246, 0.12) 100%)' },
+      65: { desc: { en: 'Heavy rain', zh: '大雨' }, icon: '🌧️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(29, 78, 216, 0.15) 100%)' },
+      71: { desc: { en: 'Slight snow fall', zh: '小雪' }, icon: '❄️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(147, 197, 253, 0.08) 100%)' },
+      73: { desc: { en: 'Moderate snow fall', zh: '中雪' }, icon: '❄️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(147, 197, 253, 0.12) 100%)' },
+      75: { desc: { en: 'Heavy snow fall', zh: '大雪' }, icon: '❄️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(147, 197, 253, 0.18) 100%)' },
+      80: { desc: { en: 'Slight rain showers', zh: '阵雨' }, icon: '🌦️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(59, 130, 246, 0.08) 100%)' },
+      81: { desc: { en: 'Moderate rain showers', zh: '中度阵雨' }, icon: '🌦️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(59, 130, 246, 0.12) 100%)' },
+      82: { desc: { en: 'Violent rain showers', zh: '强阵雨' }, icon: '⛈️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(29, 78, 216, 0.18) 100%)' },
+      95: { desc: { en: 'Thunderstorm', zh: '雷阵雨' }, icon: '⛈️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(124, 58, 237, 0.15) 100%)' },
+      96: { desc: { en: 'Thunderstorm with hail', zh: '强雷雨伴有冰雹' }, icon: '⛈️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(124, 58, 237, 0.18) 100%)' },
+      99: { desc: { en: 'Thunderstorm with heavy hail', zh: '强雷雨伴有大冰雹' }, icon: '⛈️', bg: 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(124, 58, 237, 0.22) 100%)' }
     };
 
     function syntaxHighlight(json) {
@@ -896,16 +1054,23 @@ function getHTML(request) {
       const termTitle = document.getElementById('terminalEndpoint');
       const badge = document.getElementById('terminalStatus');
       
+      let finalEndpoint = endpoint;
+      if (endpoint.includes('/api/weather')) {
+        const urlObj = new URL(endpoint, window.location.href);
+        urlObj.searchParams.set('lang', currentLang);
+        finalEndpoint = urlObj.pathname + urlObj.search;
+      }
+
       if (!isSilent) {
-        termTitle.textContent = "fetch('" + endpoint + "')";
+        termTitle.textContent = "fetch('" + finalEndpoint + "')";
         badge.className = "status-badge status-idle";
-        badge.textContent = "FETCHING...";
+        badge.textContent = i18n[currentLang].fetching;
         viewer.innerHTML = "// Requesting edge worker...";
       }
 
       try {
         const start = performance.now();
-        const response = await fetch(endpoint);
+        const response = await fetch(finalEndpoint);
         const elapsed = (performance.now() - start).toFixed(1);
         const data = await response.json();
         
@@ -921,7 +1086,7 @@ function getHTML(request) {
           badge.style.background = "rgba(239, 68, 68, 0.15)";
           badge.style.color = "#ef4444";
           badge.style.border = "1px solid rgba(239, 68, 68, 0.25)";
-          badge.textContent = "ERROR";
+          badge.textContent = i18n[currentLang].error;
           viewer.innerHTML = "// Operation failed:\\n" + err.message;
         }
         throw err;
@@ -936,7 +1101,7 @@ function getHTML(request) {
       
       termTitle.textContent = "fetch('/api/echo', { method: 'POST' })";
       badge.className = "status-badge status-idle";
-      badge.textContent = "POSTING...";
+      badge.textContent = i18n[currentLang].posting;
       viewer.innerHTML = "// Shipping POST payload to edge...";
 
       try {
@@ -957,39 +1122,46 @@ function getHTML(request) {
         badge.style.background = "rgba(239, 68, 68, 0.15)";
         badge.style.color = "#ef4444";
         badge.style.border = "1px solid rgba(239, 68, 68, 0.25)";
-        badge.textContent = "ERROR";
+        badge.textContent = i18n[currentLang].error;
         viewer.innerHTML = "// POST failed:\\n" + err.message;
       }
     }
 
-    // Weather handler
-    async function loadLocalWeather() {
+    // Weather handlers
+    async function loadLocalWeather(isSilent = false) {
       try {
-        const data = await triggerAPI('/api/weather', true);
+        const data = await triggerAPI('/api/weather', isSilent);
+        weatherDataCache = data;
         displayWeather(data);
       } catch (err) {
-        document.getElementById('weatherCity').textContent = "Auto-detection failed";
-        document.getElementById('weatherCondition').textContent = "Use city search instead";
+        if (!isSilent) {
+          document.getElementById('weatherCity').textContent = "Auto-location failed";
+          document.getElementById('weatherCondition').textContent = "Please search manually";
+        }
       }
     }
 
-    async function searchWeather() {
+    async function searchWeather(isSilent = false) {
       const city = document.getElementById('weatherCityInput').value.trim();
       if (!city) return;
       
-      const widget = document.getElementById('weatherWidget');
       const cityText = document.getElementById('weatherCity');
       const condText = document.getElementById('weatherCondition');
       
-      cityText.textContent = "Searching...";
-      condText.textContent = "Querying databases...";
+      if (!isSilent) {
+        cityText.textContent = currentLang === 'zh' ? "搜索中..." : "Searching...";
+        condText.textContent = currentLang === 'zh' ? "正在请求节点..." : "Querying edge...";
+      }
       
       try {
-        const data = await triggerAPI('/api/weather?city=' + encodeURIComponent(city));
+        const data = await triggerAPI('/api/weather?city=' + encodeURIComponent(city), isSilent);
+        weatherDataCache = data;
         displayWeather(data);
       } catch (err) {
-        cityText.textContent = "Error";
-        condText.textContent = "City not found or request failed.";
+        if (!isSilent) {
+          cityText.textContent = currentLang === 'zh' ? "查找失败" : "Error";
+          condText.textContent = currentLang === 'zh' ? "未找到该城市或网络超时" : "City not found or request failed.";
+        }
       }
     }
 
@@ -1003,22 +1175,23 @@ function getHTML(request) {
       const card = document.getElementById('weatherWidget').closest('.weather-card');
       
       const code = data.current.weathercode;
-      const mapping = weatherCodes[code] || { desc: 'Unknown', icon: '❓', bg: 'var(--card-bg)' };
+      const mapping = weatherCodes[code] || { desc: { en: 'Unknown', zh: '未知' }, icon: '❓', bg: 'var(--card-bg)' };
       
       tempText.textContent = Math.round(data.current.temperature) + '°C';
       cityText.textContent = data.city;
-      condText.textContent = mapping.desc;
+      condText.textContent = mapping.desc[currentLang];
       windText.textContent = data.current.windspeed + ' km/h';
       coordsText.textContent = Number(data.latitude).toFixed(3) + ', ' + Number(data.longitude).toFixed(3);
       iconText.textContent = mapping.icon;
       
-      // Update background dynamically for dynamic visual feedback
+      // Update card glow styling
       card.style.background = mapping.bg;
       card.style.borderColor = 'rgba(255, 255, 255, 0.15)';
     }
 
     // Initial load
     window.addEventListener('DOMContentLoaded', () => {
+      switchLanguage(currentLang);
       loadLocalWeather();
     });
   </script>
