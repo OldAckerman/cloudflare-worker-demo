@@ -110,25 +110,50 @@ async function handleWeather(request) {
   let lat, lon, resolvedCityName;
   
   if (city) {
+    // 1. Try Nominatim (OSM Geocoding) first to support Chinese city names
     try {
-      const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`;
-      const geoResponse = await fetch(geoUrl);
-      const geoData = await geoResponse.json();
+      const osmUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)}&format=json&limit=1`;
+      const osmResponse = await fetch(osmUrl, {
+        headers: {
+          'User-Agent': 'Cloudflare-Worker-Weather-Demo/1.0 (contact: admin@example.com)'
+        }
+      });
+      const osmData = await osmResponse.json();
       
-      if (!geoData.results || geoData.results.length === 0) {
-        return new Response(JSON.stringify({ error: `City '${city}' not found` }), {
-          status: 404,
+      if (osmData && osmData.length > 0) {
+        const result = osmData[0];
+        lat = result.lat;
+        lon = result.lon;
+        resolvedCityName = result.display_name;
+      }
+    } catch (err) {
+      console.error("Nominatim geocoding failed, falling back to Open-Meteo...", err);
+    }
+    
+    // 2. Fallback to Open-Meteo Geocoding (supports English/Pinyin)
+    if (!lat || !lon) {
+      try {
+        const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`;
+        const geoResponse = await fetch(geoUrl);
+        const geoData = await geoResponse.json();
+        
+        if (geoData.results && geoData.results.length > 0) {
+          const result = geoData.results[0];
+          lat = result.latitude;
+          lon = result.longitude;
+          resolvedCityName = result.name + (result.admin1 ? `, ${result.admin1}` : "") + `, ${result.country}`;
+        }
+      } catch (err) {
+        return new Response(JSON.stringify({ error: "Failed to resolve city geocode", details: err.message }), {
+          status: 500,
           headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
         });
       }
-      
-      const result = geoData.results[0];
-      lat = result.latitude;
-      lon = result.longitude;
-      resolvedCityName = result.name + (result.admin1 ? `, ${result.admin1}` : "") + `, ${result.country}`;
-    } catch (err) {
-      return new Response(JSON.stringify({ error: "Failed to resolve city geocode", details: err.message }), {
-        status: 500,
+    }
+    
+    if (!lat || !lon) {
+      return new Response(JSON.stringify({ error: `City '${city}' not found` }), {
+        status: 404,
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     }
@@ -174,6 +199,7 @@ async function handleWeather(request) {
     });
   }
 }
+
 
 async function handleEcho(request) {
   try {
