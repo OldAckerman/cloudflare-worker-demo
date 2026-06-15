@@ -1,0 +1,14 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Dependencies
+node_modules/
+
+# Cloudflare Wrangler
+.wrangler/
+.dev.vars
+
+# OS files
+.DS_Store
